@@ -197,7 +197,7 @@ from fraud_alerts
 group by AccountID, MerchantID
 having NumberOfTransactions > 1 
 AND TimeDifferenceInMinutes <= 10
-order by NumberOfTransactions desc, TimeDifferenceInMinutes desc, AccountID asc;
+order by NumberOfTransactions desc, TimeDifferenceInMinutes asc, AccountID asc;
 
 -- Q11: First-time transactions (no PreviousTransactionDate)
 -- Motive: To find out High-value first-time transactions as such transactions are often suspicious
@@ -211,24 +211,15 @@ where PreviousTransactionDate is null;
 
 select NextTransactionDate
 from fraud_alerts
-where 
-	(time(NextTransactionDate) >= '00:00:00'
-    and time(NextTransactionDate) <= '05:00:00');
+where time(NextTransactionDate) between '00:00:00' and  '05:00:00';
     
-select NextTransactionDate
-from fraud_alerts
-where hour(NextTransactionDate) between 0 and 5;
-
 -- Q13: Average time gap between transactions per customer
 -- Motive: To Identify unusual gaps or sudden activity after inactivity
 
-select 
-	AccountID, 
-	NextTransactionDate, 
-    PreviousTransactionDate, 
-    datediff(NextTransactionDate,PreviousTransactionDate) as TimeGapInDays
+select AccountID, round(avg(datediff(NextTransactionDate,PreviousTransactionDate)),3) as AvgTimeGapInDays
 from fraud_alerts
-order by TimeGapInDays desc, AccountID asc;
+group by AccountID
+order by AvgTimeGapInDays desc, AccountID asc;
     
 -- Q14: Elderly customers making high-value transactions
 -- Motive: Senior citizens are more vulnerable to online frauds.
@@ -266,7 +257,15 @@ group by TransactionID
 having TransactionIDCount >= 2
 order by TransactionID;
 
+-- Based on our observations these transactions are suspicious, normal or have high risk involved
 
+select *,
+  case 
+    when `Channel` = 'Online' and time(NextTransactionDate) between '00:00:00' and '05:00:00' then 'High Risk'
+    when LoginAttempts > 3 then 'Suspicious'
+    else 'Normal'
+  end as FraudRisk
+from fraud_alerts;
 
 
 
